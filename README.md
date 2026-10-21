@@ -60,6 +60,10 @@ curl -s http://localhost:8090/v1/reconcile -H "Authorization: Bearer <access_tok
 # -> [ { "account": "CLIENT_FUNDS:demo-client", "snapshot": 100000.00, "computed": 100000.00, "matches": true }, ... ]
 ```
 
+A **nightly job** (`ReconciliationJob`, `@Scheduled` at `payout.reconciliation.cron`, default
+03:00 UTC) runs the same check automatically and logs any mismatch at ERROR — the hook where a
+real system would page on-call or rebuild the snapshot from the journal.
+
 See the journal lines behind a payout: `GET /v1/payouts/{id}/entries` (scoped to the caller —
 another client's payout returns `404`):
 ```bash

@@ -29,6 +29,7 @@ class LedgerFlowTest {
     @Autowired LedgerService ledger;
     @Autowired SettlementProcessor settlement;
     @Autowired ReversalService reversal;
+    @Autowired ReconciliationJob reconciliationJob;
     @Autowired LedgerEntryJpaRepository entries;
 
     private static final String CLIENT = "demo-client";
@@ -92,6 +93,9 @@ class LedgerFlowTest {
 
         // Reconciliation: every cached snapshot matches the journal re-sum.
         assertThat(ledger.reconcileAll()).allMatch(ReconItem::matches);
+
+        // The nightly job reports zero mismatches on a healthy ledger.
+        assertThat(reconciliationJob.checkAndReport()).isEmpty();
 
         printLedger(p.id());
     }
