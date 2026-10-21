@@ -2,7 +2,6 @@ package com.arana.payout.payout;
 
 import com.arana.payout.auth.BearerTokenFilter;
 import com.arana.payout.ledger.LedgerEntryView;
-import com.arana.payout.ledger.LedgerService;
 import com.arana.payout.payout.PayoutDtos.CreatePayoutRequest;
 import com.arana.payout.payout.PayoutDtos.PayoutResponse;
 import jakarta.servlet.http.HttpServletRequest;
@@ -30,11 +29,13 @@ import java.util.List;
 public class PayoutController {
 
     private final PayoutService service;
-    private final LedgerService ledger;
 
-    public PayoutController(PayoutService service, LedgerService ledger) {
+    public PayoutController(PayoutService service) {
         this.service = service;
-        this.ledger = ledger;
+    }
+
+    private static String callerId(HttpServletRequest http) {
+        return (String) http.getAttribute(BearerTokenFilter.CLIENT_ID_ATTR);
     }
 
     @PostMapping
@@ -46,41 +47,29 @@ public class PayoutController {
         if (idempotencyKey == null || idempotencyKey.isBlank()) {
             throw new MissingHeaderException("Idempotency-Key");
         }
-        String clientId = (String) http.getAttribute(BearerTokenFilter.CLIENT_ID_ATTR);
-
-        Payout payout = service.create(clientId, idempotencyKey, request);
+        Payout payout = service.create(callerId(http), idempotencyKey, request);
         return ResponseEntity
                 .created(URI.create("/v1/payouts/" + payout.id()))
                 .body(PayoutResponse.from(payout));
     }
 
     @GetMapping("/{id}")
-    public PayoutResponse get(@PathVariable String id) {
-        return PayoutResponse.from(service.get(id));
+    public PayoutResponse get(@PathVariable String id, HttpServletRequest http) {
+        return PayoutResponse.from(service.getForClient(callerId(http), id));
     }
 
-    /**
-     * The double-entry journal lines behind this payout (commit + settlement).
-     * Scoped to the caller: another client's payout returns 404 (don't reveal it exists).
-     */
+    /** The double-entry journal lines behind this payout (commit + settlement). */
     @GetMapping("/{id}/entries")
     public List<LedgerEntryView> entries(@PathVariable String id, HttpServletRequest http) {
-        String clientId = (String) http.getAttribute(BearerTokenFilter.CLIENT_ID_ATTR);
-        Payout payout = service.get(id);                 // 404 if missing
-        if (!payout.clientId().equals(clientId)) {
-            throw new PayoutNotFoundException(id);        // hide other clients' payouts
-        }
-        return ledger.entriesForReference(id);
+        return service.entriesForPayout(callerId(http), id);
     }
 
     /**
      * Reverse/refund a payout: posts a mirroring ledger transaction and returns the
-     * funds to the client's balance. Status becomes RETURNED. Caller-scoped (404 for others);
-     * a payout that can't be reversed returns 409.
+     * funds to the client's balance. Status becomes RETURNED.
      */
     @PostMapping("/{id}/reverse")
     public PayoutResponse reverse(@PathVariable String id, HttpServletRequest http) {
-        String clientId = (String) http.getAttribute(BearerTokenFilter.CLIENT_ID_ATTR);
-        return PayoutResponse.from(service.reverse(clientId, id));
+        return PayoutResponse.from(service.reverse(callerId(http), id));
     }
 }

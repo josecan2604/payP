@@ -5,6 +5,7 @@ import com.arana.payout.ledger.AccountType;
 import com.arana.payout.ledger.InsufficientFundsException;
 import com.arana.payout.ledger.JournalLine;
 import com.arana.payout.ledger.LedgerAccounts;
+import com.arana.payout.ledger.LedgerEntryView;
 import com.arana.payout.ledger.LedgerService;
 import com.arana.payout.ledger.ReversalService;
 import com.arana.payout.ledger.SettlementProcessor;
@@ -125,12 +126,24 @@ public class PayoutService {
         return store.findById(id).orElseThrow(() -> new PayoutNotFoundException(id));
     }
 
+    /** A payout, but only if it belongs to the given client (else 404 — don't reveal it exists). */
+    public Payout getForClient(String clientId, String id) {
+        Payout p = get(id);
+        if (!p.clientId().equals(clientId)) {
+            throw new PayoutNotFoundException(id);
+        }
+        return p;
+    }
+
+    /** The journal lines for a payout the client owns. */
+    public List<LedgerEntryView> entriesForPayout(String clientId, String id) {
+        getForClient(clientId, id); // enforces ownership (404 otherwise)
+        return ledger.entriesForReference(id);
+    }
+
     /** Reverse/refund a payout for the given client, then notify via webhook. */
     public Payout reverse(String clientId, String id) {
-        Payout existing = store.findById(id).orElseThrow(() -> new PayoutNotFoundException(id));
-        if (!existing.clientId().equals(clientId)) {
-            throw new PayoutNotFoundException(id); // hide other clients' payouts
-        }
+        getForClient(clientId, id);             // enforces ownership (404 otherwise)
         Payout reversed = reversal.reverse(id); // own @Transactional
         webhookSender.sendPayoutEvent("payout.returned", reversed);
         return reversed;
