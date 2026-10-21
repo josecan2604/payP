@@ -13,7 +13,9 @@ public record PayoutProperties(
         long tokenTtlSeconds,
         Webhook webhook,
         long statusFlipDelaySeconds,
-        Map<String, Double> fx
+        Map<String, Double> fx,
+        double seedBalance,
+        String seedCurrency
 ) {
     public record Webhook(
             String secret,

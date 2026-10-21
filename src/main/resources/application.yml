@@ -39,6 +39,9 @@ payout:
     tolerance-seconds: 300
   # How long after creation a payout flips PROCESSING -> COMPLETED (simulates settlement).
   status-flip-delay-seconds: 5
+  # Starting balance granted to each client on boot (so there are funds to pay out).
+  seed-balance: 100000.00
+  seed-currency: USD
   # Flat demo FX table. Key is "<from>_<to>".
   fx:
     USD_PEN: 3.742
