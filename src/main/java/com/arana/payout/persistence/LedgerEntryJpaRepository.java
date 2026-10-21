@@ -21,4 +21,10 @@ public interface LedgerEntryJpaRepository extends JpaRepository<LedgerEntryEntit
     BigDecimal creditMinusDebit(@Param("accountId") String accountId);
 
     long countByAccountId(String accountId);
+
+    /** Credit-normal balance per account, computed straight from the journal (for reconciliation). */
+    @Query("select e.accountId as accountId, " +
+           "coalesce(sum(e.credit), 0) - coalesce(sum(e.debit), 0) as balance " +
+           "from LedgerEntryEntity e group by e.accountId")
+    List<AccountBalanceProjection> computeAllBalances();
 }

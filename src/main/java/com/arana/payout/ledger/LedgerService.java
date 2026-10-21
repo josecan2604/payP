@@ -1,5 +1,8 @@
 package com.arana.payout.ledger;
 
+import com.arana.payout.persistence.AccountBalanceEntity;
+import com.arana.payout.persistence.AccountBalanceJpaRepository;
+import com.arana.payout.persistence.AccountBalanceProjection;
 import com.arana.payout.persistence.LedgerAccountEntity;
 import com.arana.payout.persistence.LedgerAccountJpaRepository;
 import com.arana.payout.persistence.LedgerEntryEntity;
@@ -26,11 +29,14 @@ public class LedgerService {
 
     private final LedgerAccountJpaRepository accounts;
     private final LedgerEntryJpaRepository entries;
+    private final AccountBalanceJpaRepository balances;
     private final Clock clock;
 
-    public LedgerService(LedgerAccountJpaRepository accounts, LedgerEntryJpaRepository entries, Clock clock) {
+    public LedgerService(LedgerAccountJpaRepository accounts, LedgerEntryJpaRepository entries,
+                         AccountBalanceJpaRepository balances, Clock clock) {
         this.accounts = accounts;
         this.entries = entries;
+        this.balances = balances;
         this.clock = clock;
     }
 
@@ -44,6 +50,7 @@ public class LedgerService {
 
         String txnId = UUID.randomUUID().toString();
         Instant now = clock.instant();
+        Map<String, BigDecimal> deltaByAccount = new LinkedHashMap<>();
 
         for (JournalLine line : lines) {
             if (line.amount().signum() <= 0) {
@@ -51,15 +58,21 @@ public class LedgerService {
             }
             ensureAccount(line.accountId(), line.accountType(), line.currency(), now);
 
-            BigDecimal debit = line.direction() == Direction.DEBIT ? line.amount() : BigDecimal.ZERO;
-            BigDecimal credit = line.direction() == Direction.CREDIT ? line.amount() : BigDecimal.ZERO;
+            BigDecimal amount = line.amount().setScale(2, java.math.RoundingMode.HALF_UP);
+            boolean isDebit = line.direction() == Direction.DEBIT;
             entries.save(new LedgerEntryEntity(
                     UUID.randomUUID().toString(), txnId, txnType, reference,
                     line.accountId(), line.currency(),
-                    debit.setScale(2, java.math.RoundingMode.HALF_UP),
-                    credit.setScale(2, java.math.RoundingMode.HALF_UP),
+                    isDebit ? amount : BigDecimal.ZERO,
+                    isDebit ? BigDecimal.ZERO : amount,
                     now));
+
+            // Credit-normal delta: credit adds, debit subtracts.
+            deltaByAccount.merge(line.accountId(), isDebit ? amount.negate() : amount, BigDecimal::add);
         }
+
+        // Update the running-balance snapshot once per account, in this same transaction.
+        deltaByAccount.forEach((accountId, delta) -> applyToSnapshot(accountId, delta, now));
         return txnId;
     }
 
@@ -84,11 +97,46 @@ public class LedgerService {
         return post("PAYOUT_REVERSAL", reference, lines);
     }
 
-    /** Available (credit-normal) balance of an account, e.g. a client's funds. */
+    /**
+     * Fast read: the account's cached balance (single-row lookup), not a sum of the journal.
+     * This is what GET /balance and the funds check use.
+     */
+    @Transactional(readOnly = true)
+    public BigDecimal snapshotBalance(String accountId) {
+        return balances.findById(accountId).map(AccountBalanceEntity::getBalance).orElse(BigDecimal.ZERO);
+    }
+
+    /** Authoritative: the credit-normal balance computed straight from the journal. */
     @Transactional(readOnly = true)
     public BigDecimal availableBalance(String accountId) {
         BigDecimal bal = entries.creditMinusDebit(accountId);
         return bal == null ? BigDecimal.ZERO : bal;
+    }
+
+    /**
+     * Re-sum the journal per account and compare each to its cached snapshot. Every row
+     * should match; a mismatch means the cache drifted and must be rebuilt from the journal.
+     */
+    @Transactional(readOnly = true)
+    public List<ReconItem> reconcileAll() {
+        Map<String, BigDecimal> snap = new LinkedHashMap<>();
+        for (AccountBalanceEntity b : balances.findAll()) {
+            snap.put(b.getAccountId(), b.getBalance());
+        }
+        List<ReconItem> result = new ArrayList<>();
+        for (AccountBalanceProjection p : entries.computeAllBalances()) {
+            BigDecimal computed = p.getBalance().setScale(2, java.math.RoundingMode.HALF_UP);
+            BigDecimal cached = snap.getOrDefault(p.getAccountId(), BigDecimal.ZERO);
+            result.add(new ReconItem(p.getAccountId(), cached, computed, cached.compareTo(computed) == 0));
+        }
+        return result;
+    }
+
+    private void applyToSnapshot(String accountId, BigDecimal delta, Instant now) {
+        int updated = balances.addToBalance(accountId, delta, now);
+        if (updated == 0) {
+            balances.save(new AccountBalanceEntity(accountId, delta, now));
+        }
     }
 
     public boolean hasEntries(String accountId) {

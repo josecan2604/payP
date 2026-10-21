@@ -8,13 +8,15 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 /**
- * GET /v1/balance -> the calling client's available funds.
+ * GET /v1/balance    -> the calling client's available funds (fast snapshot read).
+ * GET /v1/reconcile  -> re-sums the journal and compares it to the cached snapshots.
  * Behind the bearer-token filter; the client id comes from the validated token.
  */
 @RestController
-@RequestMapping("/v1/balance")
+@RequestMapping("/v1")
 public class LedgerController {
 
     private final LedgerService ledger;
@@ -25,12 +27,17 @@ public class LedgerController {
         this.props = props;
     }
 
-    @GetMapping
+    @GetMapping("/balance")
     public BalanceResponse balance(HttpServletRequest http) {
         String clientId = (String) http.getAttribute(BearerTokenFilter.CLIENT_ID_ATTR);
         String account = LedgerAccounts.clientFunds(clientId);
-        BigDecimal available = ledger.availableBalance(account);
+        BigDecimal available = ledger.snapshotBalance(account); // single-row read, not a SUM
         return new BalanceResponse(account, props.seedCurrency(), available);
+    }
+
+    @GetMapping("/reconcile")
+    public List<ReconItem> reconcile() {
+        return ledger.reconcileAll();
     }
 
     public record BalanceResponse(String account, String currency, BigDecimal available) {}
