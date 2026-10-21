@@ -2,6 +2,7 @@ package com.arana.payout.payout;
 
 import com.arana.payout.auth.AuthException;
 import com.arana.payout.ledger.InsufficientFundsException;
+import com.arana.payout.ledger.ReversalNotAllowedException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -47,6 +48,13 @@ public class GlobalExceptionHandler {
     public ProblemDetail onInsufficientFunds(InsufficientFundsException ex) {
         ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage());
         pd.setTitle("Insufficient Funds");
+        return pd;
+    }
+
+    @ExceptionHandler(ReversalNotAllowedException.class)
+    public ProblemDetail onReversalNotAllowed(ReversalNotAllowedException ex) {
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+        pd.setTitle("Conflict");
         return pd;
     }
 

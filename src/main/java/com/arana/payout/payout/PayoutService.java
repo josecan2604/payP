@@ -6,6 +6,7 @@ import com.arana.payout.ledger.InsufficientFundsException;
 import com.arana.payout.ledger.JournalLine;
 import com.arana.payout.ledger.LedgerAccounts;
 import com.arana.payout.ledger.LedgerService;
+import com.arana.payout.ledger.ReversalService;
 import com.arana.payout.ledger.SettlementProcessor;
 import com.arana.payout.payout.PayoutDtos.CreatePayoutRequest;
 import com.arana.payout.webhook.WebhookSender;
@@ -50,17 +51,20 @@ public class PayoutService {
     private final WebhookSender webhookSender;
     private final LedgerService ledger;
     private final SettlementProcessor settlement;
+    private final ReversalService reversal;
     private final Clock clock;
 
     public PayoutService(PayoutStore store, PayoutProperties props,
                          ScheduledExecutorService settlementScheduler, WebhookSender webhookSender,
-                         LedgerService ledger, SettlementProcessor settlement, Clock clock) {
+                         LedgerService ledger, SettlementProcessor settlement,
+                         ReversalService reversal, Clock clock) {
         this.store = store;
         this.props = props;
         this.scheduler = settlementScheduler;
         this.webhookSender = webhookSender;
         this.ledger = ledger;
         this.settlement = settlement;
+        this.reversal = reversal;
         this.clock = clock;
     }
 
@@ -119,6 +123,17 @@ public class PayoutService {
 
     public Payout get(String id) {
         return store.findById(id).orElseThrow(() -> new PayoutNotFoundException(id));
+    }
+
+    /** Reverse/refund a payout for the given client, then notify via webhook. */
+    public Payout reverse(String clientId, String id) {
+        Payout existing = store.findById(id).orElseThrow(() -> new PayoutNotFoundException(id));
+        if (!existing.clientId().equals(clientId)) {
+            throw new PayoutNotFoundException(id); // hide other clients' payouts
+        }
+        Payout reversed = reversal.reverse(id); // own @Transactional
+        webhookSender.sendPayoutEvent("payout.returned", reversed);
+        return reversed;
     }
 
     private void scheduleSettlement(String id) {

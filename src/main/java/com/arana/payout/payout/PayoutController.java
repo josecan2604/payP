@@ -72,4 +72,15 @@ public class PayoutController {
         }
         return ledger.entriesForReference(id);
     }
+
+    /**
+     * Reverse/refund a payout: posts a mirroring ledger transaction and returns the
+     * funds to the client's balance. Status becomes RETURNED. Caller-scoped (404 for others);
+     * a payout that can't be reversed returns 409.
+     */
+    @PostMapping("/{id}/reverse")
+    public PayoutResponse reverse(@PathVariable String id, HttpServletRequest http) {
+        String clientId = (String) http.getAttribute(BearerTokenFilter.CLIENT_ID_ATTR);
+        return PayoutResponse.from(service.reverse(clientId, id));
+    }
 }

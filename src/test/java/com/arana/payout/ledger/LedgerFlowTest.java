@@ -28,6 +28,7 @@ class LedgerFlowTest {
     @Autowired PayoutService service;
     @Autowired LedgerService ledger;
     @Autowired SettlementProcessor settlement;
+    @Autowired ReversalService reversal;
     @Autowired LedgerEntryJpaRepository entries;
 
     private static final String CLIENT = "demo-client";
@@ -74,6 +75,29 @@ class LedgerFlowTest {
 
         // Settling again is a safe no-op.
         assertThat(settlement.settle(p.id())).isNull();
+
+        // Reverse/refund: funds return to the client, status RETURNED, ledger still balances.
+        Payout reversed = reversal.reverse(p.id());
+        assertThat(reversed.status()).isEqualTo(PayoutStatus.RETURNED);
+        assertThat(ledger.availableBalance(FUNDS)).isEqualByComparingTo("100000.00"); // whole again
+        assertThat(ledger.entriesForReference(p.id())).hasSize(10); // 3 commit + 2 settle + 5 reversal
+        assertLedgerBalanced();
+
+        // Reversing again is not allowed.
+        assertThatThrownBy(() -> reversal.reverse(p.id()))
+                .isInstanceOf(ReversalNotAllowedException.class);
+
+        printLedger(p.id());
+    }
+
+    private void printLedger(String payoutId) {
+        System.out.println("\n===== LEDGER FOR " + payoutId + " =====");
+        System.out.printf("%-16s %-24s %12s %12s  %s%n", "TXN_TYPE", "ACCOUNT", "DEBIT", "CREDIT", "CCY");
+        for (LedgerEntryEntity e : entries.findByReferenceOrderByCreatedAtAscIdAsc(payoutId)) {
+            System.out.printf("%-16s %-24s %12s %12s  %s%n",
+                    e.getTxnType(), e.getAccountId(), e.getDebit(), e.getCredit(), e.getCurrency());
+        }
+        System.out.println("=====================================\n");
     }
 
     @Test
