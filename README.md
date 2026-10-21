@@ -1,4 +1,4 @@
-# payP — payout provider demo
+# payP — payout provider
 
 An educational Spring Boot service that shows, end to end, how a real **payout
 integration** is shaped — the same mechanics a provider like Payoneer/Stripe/Wise
@@ -77,4 +77,3 @@ the logs: you'll see `delivered payout.completed ...` then `VERIFIED webhook rec
 - **Signature verification** — a public webhook's only defense is the HMAC.
 - **Status machine** — `PROCESSING → COMPLETED | FAILED | RETURNED`.
 
-> Educational only. Not a real payment system and not production-ready.
