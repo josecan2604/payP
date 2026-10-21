@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -60,6 +61,27 @@ public class LedgerService {
                     now));
         }
         return txnId;
+    }
+
+    /**
+     * Post the mirror image of a set of entries (debit <-> credit) as one PAYOUT_REVERSAL
+     * transaction. Reversing a balanced set is itself balanced, so money returns exactly
+     * to where it was before.
+     */
+    @Transactional
+    public String postReversal(String reference, List<LedgerEntryEntity> originals) {
+        List<JournalLine> lines = new ArrayList<>();
+        for (LedgerEntryEntity e : originals) {
+            AccountType type = accounts.findById(e.getAccountId())
+                    .map(LedgerAccountEntity::getType)
+                    .orElse(AccountType.ASSET); // accounts always pre-exist for a reversal
+            if (e.getDebit().signum() > 0) {
+                lines.add(JournalLine.credit(e.getAccountId(), type, e.getDebit(), e.getCurrency()));
+            } else {
+                lines.add(JournalLine.debit(e.getAccountId(), type, e.getCredit(), e.getCurrency()));
+            }
+        }
+        return post("PAYOUT_REVERSAL", reference, lines);
     }
 
     /** Available (credit-normal) balance of an account, e.g. a client's funds. */

@@ -50,6 +50,11 @@ public class Payout {
         this.completedAt = when;
     }
 
+    /** Mark a payout as reversed/returned (funds given back to the client). */
+    public void markReturned() {
+        this.status = PayoutStatus.RETURNED;
+    }
+
     public String id() { return id; }
     public String clientId() { return clientId; }
     public Money amount() { return amount; }

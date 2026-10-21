@@ -55,6 +55,15 @@ curl -s http://localhost:8090/v1/payouts/<id>/entries \
 #    then settlement lines (debit in-transit, credit bank cash)
 ```
 
+Reverse/refund a payout: `POST /v1/payouts/{id}/reverse`. It posts a `PAYOUT_REVERSAL` that
+mirrors every prior line, so funds return to the client and the status becomes `RETURNED`.
+Works whether the payout is still `PROCESSING` (cancel) or already `COMPLETED` (a return/bounce).
+A payout that can't be reversed (already returned / failed) gives `409`.
+```bash
+curl -s -X POST http://localhost:8090/v1/payouts/<id>/reverse \
+  -H "Authorization: Bearer <access_token>"
+```
+
 ## Run
 ```bash
 # 1. start Postgres (schema is created by Flyway on first boot)
