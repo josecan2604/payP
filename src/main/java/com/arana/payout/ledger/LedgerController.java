@@ -30,10 +30,8 @@ public class LedgerController {
 
     @GetMapping("/balance")
     public BalanceResponse balance(HttpServletRequest http) {
-        String clientId = (String) http.getAttribute(BearerTokenFilter.CLIENT_ID_ATTR);
-        String account = LedgerAccounts.clientFunds(clientId);
-        BigDecimal available = ledger.snapshotBalance(account); // single-row read, not a SUM
-        return new BalanceResponse(account, props.seedCurrency(), available);
+        BigDecimal available = ledger.availableFundsForClient(callerId(http));
+        return new BalanceResponse(props.seedCurrency(), available);
     }
 
     @GetMapping("/reconcile")
@@ -42,21 +40,22 @@ public class LedgerController {
     }
 
     /**
-     * Caller-scoped account statement: the entries on the client's own funds account,
-     * newest first, paginated, optionally filtered by transaction type.
-     *   GET /v1/ledger?page=0&size=20&type=PAYOUT_COMMIT
+     * The caller's own account statement, newest first, paginated, optionally filtered by
+     * transaction type:  GET /v1/ledger?page=0&size=20&type=PAYOUT_COMMIT
      */
     @GetMapping("/ledger")
     public LedgerPage ledger(@RequestParam(defaultValue = "0") int page,
                              @RequestParam(defaultValue = "20") int size,
                              @RequestParam(required = false) String type,
                              HttpServletRequest http) {
-        String clientId = (String) http.getAttribute(BearerTokenFilter.CLIENT_ID_ATTR);
-        String account = LedgerAccounts.clientFunds(clientId); // scoped to the caller
         int safePage = Math.max(page, 0);
-        int safeSize = Math.min(Math.max(size, 1), 100);       // cap to protect the server
-        return ledger.statement(account, type, safePage, safeSize);
+        int safeSize = Math.min(Math.max(size, 1), 100); // cap to protect the server
+        return ledger.statementForClient(callerId(http), type, safePage, safeSize);
     }
 
-    public record BalanceResponse(String account, String currency, BigDecimal available) {}
+    private static String callerId(HttpServletRequest http) {
+        return (String) http.getAttribute(BearerTokenFilter.CLIENT_ID_ATTR);
+    }
+
+    public record BalanceResponse(String currency, BigDecimal available) {}
 }

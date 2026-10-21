@@ -154,9 +154,21 @@ public class LedgerService {
                 .stream().map(LedgerEntryView::from).toList();
     }
 
+    /** Caller-facing: a client's available funds. The account naming stays inside the service. */
+    @Transactional(readOnly = true)
+    public BigDecimal availableFundsForClient(String clientId) {
+        return snapshotBalance(LedgerAccounts.clientFunds(clientId));
+    }
+
+    /** Caller-facing: a client's own account statement. The account naming stays inside the service. */
+    @Transactional(readOnly = true)
+    public LedgerPage statementForClient(String clientId, String txnType, int page, int size) {
+        return statement(LedgerAccounts.clientFunds(clientId), txnType, page, size);
+    }
+
     /**
      * A paginated statement of one account's entries, newest first, optionally filtered
-     * by transaction type. Used for the caller-scoped GET /v1/ledger.
+     * by transaction type.
      */
     @Transactional(readOnly = true)
     public LedgerPage statement(String accountId, String txnType, int page, int size) {
