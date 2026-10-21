@@ -94,6 +94,15 @@ class LedgerFlowTest {
         // Reconciliation: every cached snapshot matches the journal re-sum.
         assertThat(ledger.reconcileAll()).allMatch(ReconItem::matches);
 
+        // Statement: the client's funds account has 3 lines (funding, commit, reversal), newest first.
+        LedgerPage stmt = ledger.statement(FUNDS, null, 0, 20);
+        assertThat(stmt.content()).hasSize(3);
+        assertThat(stmt.totalElements()).isEqualTo(3);
+        assertThat(stmt.content().get(0).txnType()).isEqualTo("PAYOUT_REVERSAL"); // most recent
+
+        // Filter by type.
+        assertThat(ledger.statement(FUNDS, "PAYOUT_COMMIT", 0, 20).content()).hasSize(1);
+
         // The nightly job reports zero mismatches on a healthy ledger.
         assertThat(reconciliationJob.checkAndReport()).isEmpty();
 
