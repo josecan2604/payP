@@ -86,9 +86,9 @@ public class PayoutService {
         BigDecimal payoutValue = gross.multiply(BigDecimal.valueOf(rate)).setScale(2, RoundingMode.HALF_UP);
         BigDecimal required = gross.add(fee); // debited from the client's balance
 
-        // 3. Funds check against the ledger.
+        // 3. Funds check against the ledger (fast snapshot read).
         String fundsAccount = LedgerAccounts.clientFunds(clientId);
-        BigDecimal available = ledger.availableBalance(fundsAccount);
+        BigDecimal available = ledger.snapshotBalance(fundsAccount);
         if (available.compareTo(required) < 0) {
             throw new InsufficientFundsException(fundsAccount, available, required);
         }

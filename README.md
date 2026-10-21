@@ -46,6 +46,20 @@ PAYOUT_SETTLE (on completion)         DEBIT  PAYOUTS_IN_TRANSIT     1500.00
 Check a client's balance any time: `GET /v1/balance`. A payout that exceeds it is rejected
 with `422` (`InsufficientFundsException`).
 
+### Running-balance snapshot + reconciliation
+Summing the whole journal on every read doesn't scale, so each posting also updates a cached
+balance in the **same transaction** (`account_balance`). `GET /v1/balance` then reads a single
+row instead of a `SUM` — and because the cache is written atomically with the entries, it gives
+**read-your-writes** consistency. The journal stays the source of truth; the snapshot is a
+rebuildable cache.
+
+`GET /v1/reconcile` re-sums the journal per account and compares it to the snapshots — every
+account must match (the check that proves the cache hasn't drifted):
+```bash
+curl -s http://localhost:8090/v1/reconcile -H "Authorization: Bearer <access_token>"
+# -> [ { "account": "CLIENT_FUNDS:demo-client", "snapshot": 100000.00, "computed": 100000.00, "matches": true }, ... ]
+```
+
 See the journal lines behind a payout: `GET /v1/payouts/{id}/entries` (scoped to the caller —
 another client's payout returns `404`):
 ```bash

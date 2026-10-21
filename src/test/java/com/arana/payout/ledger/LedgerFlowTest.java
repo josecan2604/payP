@@ -58,6 +58,9 @@ class LedgerFlowTest {
         // The commit posted 3 journal lines for this payout.
         assertThat(ledger.entriesForReference(p.id())).hasSize(3);
 
+        // The fast snapshot matches the authoritative sum-of-journal.
+        assertThat(ledger.snapshotBalance(FUNDS)).isEqualByComparingTo(ledger.availableBalance(FUNDS));
+
         // Idempotency: same key returns the SAME payout, no extra debit.
         Payout again = service.create(CLIENT, "key-1", request("1500.00"));
         assertThat(again.id()).isEqualTo(p.id());
@@ -86,6 +89,9 @@ class LedgerFlowTest {
         // Reversing again is not allowed.
         assertThatThrownBy(() -> reversal.reverse(p.id()))
                 .isInstanceOf(ReversalNotAllowedException.class);
+
+        // Reconciliation: every cached snapshot matches the journal re-sum.
+        assertThat(ledger.reconcileAll()).allMatch(ReconItem::matches);
 
         printLedger(p.id());
     }
