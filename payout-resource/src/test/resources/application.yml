@@ -14,6 +14,13 @@ spring:
     open-in-view: false
   flyway:
     enabled: false
+  # Decoder is created lazily and never invoked (tests call services directly, not HTTP),
+  # so this URI is not fetched during tests.
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: http://localhost:0/.well-known/jwks.json
 
 payout:
   clients:

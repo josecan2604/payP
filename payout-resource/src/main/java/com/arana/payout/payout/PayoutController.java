@@ -1,6 +1,6 @@
 package com.arana.payout.payout;
 
-import com.arana.payout.auth.ForwardedIdentityFilter;
+import com.arana.payout.auth.JwtIdentityFilter;
 import com.arana.payout.ledger.LedgerEntryView;
 import com.arana.payout.payout.PayoutDtos.CreatePayoutRequest;
 import com.arana.payout.payout.PayoutDtos.PayoutResponse;
@@ -35,7 +35,7 @@ public class PayoutController {
     }
 
     private static String callerId(HttpServletRequest http) {
-        return (String) http.getAttribute(ForwardedIdentityFilter.CLIENT_ID_ATTR);
+        return (String) http.getAttribute(JwtIdentityFilter.CLIENT_ID_ATTR);
     }
 
     @PostMapping

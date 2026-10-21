@@ -24,6 +24,13 @@ spring:
   flyway:
     enabled: true
 
+  # Defense in depth: validate the JWT here too (keys fetched from the auth server).
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${AUTH_URI:http://localhost:9000}/.well-known/jwks.json
+
 payout:
   # Client ids that get seeded with starting funds on boot (values are unused here;
   # authentication now lives in the auth server, not the resource server).

@@ -26,11 +26,13 @@ client ────▶ │  validate JWT (via JWKS) · RBAC from roles · forwar
 - **payout-gateway** — the single public entry point. Validates the JWT (signature via the auth
   server's JWKS), enforces **RBAC** from the `roles` claim (e.g. only `ADMIN` may reconcile),
   then forwards the verified identity to the resource server as trusted headers.
-- **payout-resource** — the payout APIs + double-entry ledger. Trusts the gateway's forwarded
-  identity and does **per-object ownership** checks. Not exposed publicly.
+- **payout-resource** — the payout APIs + double-entry ledger. **Validates the JWT itself**
+  (defense in depth) and derives identity from the verified `sub` claim, then does **per-object
+  ownership** checks. Also re-enforces `ADMIN` on `/v1/reconcile`.
 
-> **Authz split:** the **gateway** does RBAC (role/route rules it can decide from the token);
-> the **resource server** does resource-level ownership (is this payout yours?).
+> **Authz split:** the **gateway** does RBAC (role/route rules from the token). The **resource
+> server** also validates the JWT (so it's safe even if reached directly) and does resource-level
+> ownership (is this payout yours?). Identity comes from the verified token, never a plaintext header.
 
 ## Stack
 - Java 21, Spring Boot 3.5, **Spring Cloud Gateway**, Spring Security OAuth2 (JWT/JWKS)
