@@ -7,6 +7,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -44,6 +45,11 @@ public class PayoutEntity {
     @Column(nullable = false)
     private PayoutStatus status;
 
+    /** Optimistic-lock version: a stale status write (e.g. settle vs reverse) is rejected. */
+    @Version
+    @Column(nullable = false)
+    private long version;
+
     private String reference;
 
     @Column(nullable = false)
@@ -77,6 +83,8 @@ public class PayoutEntity {
     public void setFeeCurrency(String feeCurrency) { this.feeCurrency = feeCurrency; }
     public PayoutStatus getStatus() { return status; }
     public void setStatus(PayoutStatus status) { this.status = status; }
+    public long getVersion() { return version; }
+    public void setVersion(long version) { this.version = version; }
     public String getReference() { return reference; }
     public void setReference(String reference) { this.reference = reference; }
     public Instant getCreatedAt() { return createdAt; }

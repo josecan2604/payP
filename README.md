@@ -87,6 +87,15 @@ A **nightly job** (`ReconciliationJob`, `@Scheduled` at `payout.reconciliation.c
 03:00 UTC) runs the same check automatically and logs any mismatch at ERROR — the hook where a
 real system would page on-call or rebuild the snapshot from the journal.
 
+### Concurrency control — the right tool per row
+- **Balances (hot, shared, commutative):** an **atomic** `UPDATE ... balance = balance + :delta`
+  (the DB serializes it; no read-modify-write, no lost updates, no retries).
+- **Payout status (rare, state-dependent):** **optimistic locking** via a `@Version` column.
+  A concurrent settle vs reverse from a stale read is rejected (`ObjectOptimisticLockingFailureException`
+  → `409`), so a payout can't be both settled and reversed. OCC is wrong for the hot balance
+  (retry storms over commutative, false conflicts); atomic update is wrong for a status machine
+  (nothing to serialize) — so each row uses the tool that fits.
+
 See the journal lines behind a payout: `GET /v1/payouts/{id}/entries` (scoped to the caller —
 another client's payout returns `404`):
 ```bash

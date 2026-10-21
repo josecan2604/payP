@@ -59,6 +59,7 @@ public class PayoutStore {
         e.setFeeValue(p.fee().value());
         e.setFeeCurrency(p.fee().currency());
         e.setStatus(p.status());
+        e.setVersion(p.version());   // carry the version so JPA's optimistic check uses it
         e.setReference(p.reference());
         e.setCreatedAt(p.createdAt());
         e.setEstimatedArrival(p.estimatedArrival());
@@ -78,6 +79,7 @@ public class PayoutStore {
                 e.getCreatedAt(),
                 e.getEstimatedArrival(),
                 e.getStatus(),
-                e.getCompletedAt());
+                e.getCompletedAt(),
+                e.getVersion());
     }
 }
