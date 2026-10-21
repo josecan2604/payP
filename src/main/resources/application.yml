@@ -42,6 +42,10 @@ payout:
   # Starting balance granted to each client on boot (so there are funds to pay out).
   seed-balance: 100000.00
   seed-currency: USD
+  # Nightly reconciliation: re-sum the journal and compare to the cached snapshots.
+  reconciliation:
+    cron: "0 0 3 * * *"   # 03:00 every day
+    zone: UTC
   # Flat demo FX table. Key is "<from>_<to>".
   fx:
     USD_PEN: 3.742

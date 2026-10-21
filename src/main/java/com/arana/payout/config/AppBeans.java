@@ -2,6 +2,7 @@ package com.arana.payout.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.web.client.RestClient;
 
 import java.time.Clock;
@@ -9,6 +10,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 
 @Configuration
+@EnableScheduling
 public class AppBeans {
 
     /** Injected instead of calling Instant.now() directly, so time is testable. */
