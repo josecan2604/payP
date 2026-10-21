@@ -1,6 +1,6 @@
 package com.arana.payout.ledger;
 
-import com.arana.payout.auth.ForwardedIdentityFilter;
+import com.arana.payout.auth.JwtIdentityFilter;
 import com.arana.payout.config.PayoutProperties;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -54,7 +54,7 @@ public class LedgerController {
     }
 
     private static String callerId(HttpServletRequest http) {
-        return (String) http.getAttribute(ForwardedIdentityFilter.CLIENT_ID_ATTR);
+        return (String) http.getAttribute(JwtIdentityFilter.CLIENT_ID_ATTR);
     }
 
     public record BalanceResponse(String currency, BigDecimal available) {}
