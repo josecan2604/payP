@@ -26,6 +26,9 @@ public class LedgerEntryEntity {
     @Column(nullable = false)
     private String txnType;    // e.g. FUNDING, PAYOUT_COMMIT, PAYOUT_SETTLE
 
+    @Column
+    private String reference;  // the business object this line relates to (e.g. a payout id)
+
     @Column(nullable = false)
     private String accountId;
 
@@ -45,11 +48,12 @@ public class LedgerEntryEntity {
         // required by JPA
     }
 
-    public LedgerEntryEntity(String id, String txnId, String txnType, String accountId,
+    public LedgerEntryEntity(String id, String txnId, String txnType, String reference, String accountId,
                              String currency, BigDecimal debit, BigDecimal credit, Instant createdAt) {
         this.id = id;
         this.txnId = txnId;
         this.txnType = txnType;
+        this.reference = reference;
         this.accountId = accountId;
         this.currency = currency;
         this.debit = debit;
@@ -60,6 +64,7 @@ public class LedgerEntryEntity {
     public String getId() { return id; }
     public String getTxnId() { return txnId; }
     public String getTxnType() { return txnType; }
+    public String getReference() { return reference; }
     public String getAccountId() { return accountId; }
     public String getCurrency() { return currency; }
     public BigDecimal getDebit() { return debit; }

@@ -46,6 +46,15 @@ PAYOUT_SETTLE (on completion)         DEBIT  PAYOUTS_IN_TRANSIT     1500.00
 Check a client's balance any time: `GET /v1/balance`. A payout that exceeds it is rejected
 with `422` (`InsufficientFundsException`).
 
+See the journal lines behind a payout: `GET /v1/payouts/{id}/entries` (scoped to the caller —
+another client's payout returns `404`):
+```bash
+curl -s http://localhost:8090/v1/payouts/<id>/entries \
+  -H "Authorization: Bearer <access_token>"
+# -> commit lines (debit client funds, credit in-transit, credit fee),
+#    then settlement lines (debit in-transit, credit bank cash)
+```
+
 ## Run
 ```bash
 # 1. start Postgres (schema is created by Flyway on first boot)

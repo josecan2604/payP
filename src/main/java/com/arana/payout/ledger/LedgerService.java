@@ -33,9 +33,9 @@ public class LedgerService {
         this.clock = clock;
     }
 
-    /** Post a balanced transaction. Throws if it isn't balanced. */
+    /** Post a balanced transaction, tagging every line with a business reference. Throws if unbalanced. */
     @Transactional
-    public String post(String txnType, List<JournalLine> lines) {
+    public String post(String txnType, String reference, List<JournalLine> lines) {
         if (lines == null || lines.size() < 2) {
             throw new UnbalancedTransactionException("a transaction needs at least two lines");
         }
@@ -53,7 +53,7 @@ public class LedgerService {
             BigDecimal debit = line.direction() == Direction.DEBIT ? line.amount() : BigDecimal.ZERO;
             BigDecimal credit = line.direction() == Direction.CREDIT ? line.amount() : BigDecimal.ZERO;
             entries.save(new LedgerEntryEntity(
-                    UUID.randomUUID().toString(), txnId, txnType,
+                    UUID.randomUUID().toString(), txnId, txnType, reference,
                     line.accountId(), line.currency(),
                     debit.setScale(2, java.math.RoundingMode.HALF_UP),
                     credit.setScale(2, java.math.RoundingMode.HALF_UP),
@@ -71,6 +71,13 @@ public class LedgerService {
 
     public boolean hasEntries(String accountId) {
         return entries.countByAccountId(accountId) > 0;
+    }
+
+    /** All journal lines posted for a reference (e.g. a payout id), oldest first. */
+    @Transactional(readOnly = true)
+    public List<LedgerEntryView> entriesForReference(String reference) {
+        return entries.findByReferenceOrderByCreatedAtAscIdAsc(reference)
+                .stream().map(LedgerEntryView::from).toList();
     }
 
     // --- internals -----------------------------------------------------------

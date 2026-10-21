@@ -54,6 +54,9 @@ class LedgerFlowTest {
         assertThat(ledger.availableBalance(FUNDS)).isEqualByComparingTo("98485.00"); // 100000 - 1515
         assertLedgerBalanced();
 
+        // The commit posted 3 journal lines for this payout.
+        assertThat(ledger.entriesForReference(p.id())).hasSize(3);
+
         // Idempotency: same key returns the SAME payout, no extra debit.
         Payout again = service.create(CLIENT, "key-1", request("1500.00"));
         assertThat(again.id()).isEqualTo(p.id());
@@ -65,6 +68,9 @@ class LedgerFlowTest {
         assertThat(settled.status()).isEqualTo(PayoutStatus.COMPLETED);
         assertThat(ledger.availableBalance("PAYOUTS_IN_TRANSIT")).isEqualByComparingTo("0.00");
         assertLedgerBalanced();
+
+        // Now 5 lines for this payout: 3 from commit + 2 from settlement.
+        assertThat(ledger.entriesForReference(p.id())).hasSize(5);
 
         // Settling again is a safe no-op.
         assertThat(settlement.settle(p.id())).isNull();

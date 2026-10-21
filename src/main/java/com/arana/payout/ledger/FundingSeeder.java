@@ -44,7 +44,7 @@ public class FundingSeeder implements ApplicationRunner {
             if (ledger.hasEntries(account)) {
                 continue;
             }
-            ledger.post("FUNDING", List.of(
+            ledger.post("FUNDING", "seed:" + clientId, List.of(
                     JournalLine.debit(LedgerAccounts.BANK_CASH, AccountType.ASSET, seed, ccy),
                     JournalLine.credit(account, AccountType.LIABILITY, seed, ccy)
             ));
