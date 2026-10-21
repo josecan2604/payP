@@ -71,10 +71,11 @@ public class PayoutService {
 
     @Transactional
     public Payout create(String clientId, String idempotencyKey, CreatePayoutRequest req) {
-        // 1. Idempotency: a retried request returns the original payout, never a duplicate.
-        var existingId = store.existingForKey(idempotencyKey);
+        // 1. Idempotency (scoped per client): a retried request returns the original payout.
+        //    Keys are isolated by client, so one client can't retrieve another's payout.
+        var existingId = store.existingForKey(clientId, idempotencyKey);
         if (existingId.isPresent()) {
-            log.info("idempotency hit for key {} -> payout {}", idempotencyKey, existingId.get());
+            log.info("idempotency hit for client {} key {} -> payout {}", clientId, idempotencyKey, existingId.get());
             return store.findById(existingId.get()).orElseThrow();
         }
 
@@ -107,7 +108,7 @@ public class PayoutService {
                 req.reference(),
                 now, eta);
         store.save(payout);
-        store.linkKey(idempotencyKey, id);
+        store.linkKey(clientId, idempotencyKey, id);
 
         // 5. Ledger commit: move money off the client's balance (balanced transaction).
         ledger.post("PAYOUT_COMMIT", id, List.of(

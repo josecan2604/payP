@@ -18,6 +18,7 @@ spring:
 payout:
   clients:
     demo-client: seed
+    other-client: seed
   webhook:
     secret: whsec_test
     callback-url: http://localhost:0/webhooks/payouts
