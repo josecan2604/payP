@@ -142,7 +142,9 @@ mvn -pl payout-gateway spring-boot:run
 
 ### Schema (owned by Flyway — `payout-resource/src/main/resources/db/migration`)
 - `payout` — one row per payout (amount, payout, fx_rate, fee, status, timestamps)
-- `idempotency_key` — maps an Idempotency-Key to the payout it created, so retries don't duplicate
+- `idempotency_key` — maps an Idempotency-Key to the payout it created, so retries don't duplicate.
+  PK is composite `(client_id, idempotency_key)` so a key is **scoped per client** — one client can
+  never retrieve another's payout by reusing a key (no cross-tenant/BOLA leak).
 - `ledger_account` / `ledger_entry` — the double-entry ledger (append-only journal lines)
 
 ## Walk through the flow

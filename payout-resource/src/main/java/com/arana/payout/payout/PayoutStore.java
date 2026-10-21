@@ -36,12 +36,13 @@ public class PayoutStore {
         return payouts.findById(id).map(this::toDomain);
     }
 
-    public Optional<String> existingForKey(String idempotencyKey) {
-        return keys.findById(idempotencyKey).map(IdempotencyKeyEntity::getPayoutId);
+    /** Look up a prior payout for this client's idempotency key (scoped per client). */
+    public Optional<String> existingForKey(String clientId, String idempotencyKey) {
+        return keys.findByClientIdAndKey(clientId, idempotencyKey).map(IdempotencyKeyEntity::getPayoutId);
     }
 
-    public void linkKey(String idempotencyKey, String payoutId) {
-        keys.save(new IdempotencyKeyEntity(idempotencyKey, payoutId, clock.instant()));
+    public void linkKey(String clientId, String idempotencyKey, String payoutId) {
+        keys.save(new IdempotencyKeyEntity(clientId, idempotencyKey, payoutId, clock.instant()));
     }
 
     // --- mapping -------------------------------------------------------------
