@@ -1,6 +1,6 @@
 # payP — payout provider
 
-An educational Spring Boot service that shows, end to end, how a real **payout
+A Spring Boot service that shows, end to end, how a real **payout
 integration** is shaped — the same mechanics a provider like Payoneer/Stripe/Wise
 exposes:
 
