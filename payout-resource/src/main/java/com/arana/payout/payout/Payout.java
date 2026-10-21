@@ -20,9 +20,17 @@ public class Payout {
 
     private volatile PayoutStatus status;
     private volatile Instant completedAt;
+    private final long version;           // optimistic-lock version carried from persistence
 
     public Payout(String id, String clientId, Money amount, Money payout, double fxRate,
                   Money fee, String reference, Instant createdAt, Instant estimatedArrival) {
+        this(id, clientId, amount, payout, fxRate, fee, reference, createdAt, estimatedArrival,
+                PayoutStatus.PROCESSING, null, 0L);
+    }
+
+    private Payout(String id, String clientId, Money amount, Money payout, double fxRate,
+                   Money fee, String reference, Instant createdAt, Instant estimatedArrival,
+                   PayoutStatus status, Instant completedAt, long version) {
         this.id = id;
         this.clientId = clientId;
         this.amount = amount;
@@ -32,17 +40,17 @@ public class Payout {
         this.reference = reference;
         this.createdAt = createdAt;
         this.estimatedArrival = estimatedArrival;
-        this.status = PayoutStatus.PROCESSING;
+        this.status = status;
+        this.completedAt = completedAt;
+        this.version = version;
     }
 
-    /** Rebuilds a payout from persisted state (restores status + completedAt). */
+    /** Rebuilds a payout from persisted state (restores status, completedAt and version). */
     public static Payout rehydrate(String id, String clientId, Money amount, Money payout, double fxRate,
                                    Money fee, String reference, Instant createdAt, Instant estimatedArrival,
-                                   PayoutStatus status, Instant completedAt) {
-        Payout p = new Payout(id, clientId, amount, payout, fxRate, fee, reference, createdAt, estimatedArrival);
-        p.status = status;
-        p.completedAt = completedAt;
-        return p;
+                                   PayoutStatus status, Instant completedAt, long version) {
+        return new Payout(id, clientId, amount, payout, fxRate, fee, reference, createdAt, estimatedArrival,
+                status, completedAt, version);
     }
 
     public void markCompleted(Instant when) {
@@ -66,4 +74,5 @@ public class Payout {
     public Instant estimatedArrival() { return estimatedArrival; }
     public PayoutStatus status() { return status; }
     public Instant completedAt() { return completedAt; }
+    public long version() { return version; }
 }

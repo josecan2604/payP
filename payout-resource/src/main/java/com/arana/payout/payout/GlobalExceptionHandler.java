@@ -5,6 +5,7 @@ import com.arana.payout.ledger.InsufficientFundsException;
 import com.arana.payout.ledger.ReversalNotAllowedException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -54,6 +55,15 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ReversalNotAllowedException.class)
     public ProblemDetail onReversalNotAllowed(ReversalNotAllowedException ex) {
         ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+        pd.setTitle("Conflict");
+        return pd;
+    }
+
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public ProblemDetail onOptimisticLock(ObjectOptimisticLockingFailureException ex) {
+        // A concurrent change won; the caller's write was from a stale read.
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT,
+                "the payout was modified concurrently; please retry");
         pd.setTitle("Conflict");
         return pd;
     }

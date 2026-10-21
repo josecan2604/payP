@@ -7,9 +7,11 @@ import com.arana.payout.payout.PayoutDtos.Recipient;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.test.context.TestPropertySource;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -24,6 +26,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class PayoutIsolationTest {
 
     @Autowired PayoutService service;
+    @Autowired PayoutStore store;
 
     private static final String A = "demo-client";
     private static final String B = "other-client";
@@ -63,5 +66,23 @@ class PayoutIsolationTest {
 
         // The owner still can.
         assertThat(service.getForClient(A, a.id()).id()).isEqualTo(a.id());
+    }
+
+    @Test
+    void staleStatusWrite_isRejectedByOptimisticLock() {
+        Payout p = service.create(A, "occ-key", req("100.00"));
+
+        // Two independent reads of the same payout (both at version 0).
+        Payout r1 = store.findById(p.id()).orElseThrow();
+        Payout r2 = store.findById(p.id()).orElseThrow();
+
+        // First write wins -> version becomes 1.
+        r1.markCompleted(Instant.now());
+        store.save(r1);
+
+        // Second write is from a stale read (still version 0) -> rejected.
+        r2.markReturned();
+        assertThatThrownBy(() -> store.save(r2))
+                .isInstanceOf(ObjectOptimisticLockingFailureException.class);
     }
 }
