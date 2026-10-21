@@ -1,0 +1,29 @@
+server:
+  port: 8080   # the single public entry point
+
+spring:
+  cloud:
+    gateway:
+      routes:
+        - id: auth
+          uri: ${AUTH_URI:http://localhost:9000}
+          predicates:
+            - Path=/oauth/**,/.well-known/**
+        - id: resource-v1
+          uri: ${RESOURCE_URI:http://localhost:8090}
+          predicates:
+            - Path=/v1/**
+        - id: resource-webhooks
+          uri: ${RESOURCE_URI:http://localhost:8090}
+          predicates:
+            - Path=/webhooks/**
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # The gateway fetches the public keys from the auth server to verify signatures.
+          jwk-set-uri: ${AUTH_URI:http://localhost:9000}/.well-known/jwks.json
+
+logging:
+  level:
+    com.arana.gateway: INFO
