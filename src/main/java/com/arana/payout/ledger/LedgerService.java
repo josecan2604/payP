@@ -7,6 +7,10 @@ import com.arana.payout.persistence.LedgerAccountEntity;
 import com.arana.payout.persistence.LedgerAccountJpaRepository;
 import com.arana.payout.persistence.LedgerEntryEntity;
 import com.arana.payout.persistence.LedgerEntryJpaRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -148,6 +152,22 @@ public class LedgerService {
     public List<LedgerEntryView> entriesForReference(String reference) {
         return entries.findByReferenceOrderByCreatedAtAscIdAsc(reference)
                 .stream().map(LedgerEntryView::from).toList();
+    }
+
+    /**
+     * A paginated statement of one account's entries, newest first, optionally filtered
+     * by transaction type. Used for the caller-scoped GET /v1/ledger.
+     */
+    @Transactional(readOnly = true)
+    public LedgerPage statement(String accountId, String txnType, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size,
+                Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));
+        Page<LedgerEntryEntity> result = (txnType == null || txnType.isBlank())
+                ? entries.findByAccountId(accountId, pageable)
+                : entries.findByAccountIdAndTxnType(accountId, txnType, pageable);
+        List<LedgerEntryView> content = result.getContent().stream().map(LedgerEntryView::from).toList();
+        return new LedgerPage(content, result.getNumber(), result.getSize(),
+                result.getTotalElements(), result.getTotalPages());
     }
 
     // --- internals -----------------------------------------------------------

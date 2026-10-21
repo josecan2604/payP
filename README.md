@@ -73,6 +73,15 @@ curl -s http://localhost:8090/v1/payouts/<id>/entries \
 #    then settlement lines (debit in-transit, credit bank cash)
 ```
 
+Account statement — the caller's own ledger entries, newest first, paginated, optional
+`type` filter: `GET /v1/ledger?page=0&size=20&type=PAYOUT_COMMIT` (size capped at 100):
+```bash
+curl -s "http://localhost:8090/v1/ledger?page=0&size=20" \
+  -H "Authorization: Bearer <access_token>"
+# -> { "content": [ ...entries on CLIENT_FUNDS:<you>, newest first... ],
+#      "page": 0, "size": 20, "total_elements": 3, "total_pages": 1 }
+```
+
 Reverse/refund a payout: `POST /v1/payouts/{id}/reverse`. It posts a `PAYOUT_REVERSAL` that
 mirrors every prior line, so funds return to the client and the status becomes `RETURNED`.
 Works whether the payout is still `PROCESSING` (cancel) or already `COMPLETED` (a return/bounce).

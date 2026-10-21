@@ -1,5 +1,7 @@
 package com.arana.payout.persistence;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -11,6 +13,12 @@ public interface LedgerEntryJpaRepository extends JpaRepository<LedgerEntryEntit
 
     /** All journal lines for a business reference (e.g. a payout id), oldest first. */
     List<LedgerEntryEntity> findByReferenceOrderByCreatedAtAscIdAsc(String reference);
+
+    /** A page of an account's entries (ordering comes from the Pageable). */
+    Page<LedgerEntryEntity> findByAccountId(String accountId, Pageable pageable);
+
+    /** A page of an account's entries filtered by transaction type. */
+    Page<LedgerEntryEntity> findByAccountIdAndTxnType(String accountId, String txnType, Pageable pageable);
 
     /**
      * Credit-normal balance of an account: sum(credit) - sum(debit).
