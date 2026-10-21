@@ -105,7 +105,7 @@ public class PayoutService {
         store.linkKey(idempotencyKey, id);
 
         // 5. Ledger commit: move money off the client's balance (balanced transaction).
-        ledger.post("PAYOUT_COMMIT", List.of(
+        ledger.post("PAYOUT_COMMIT", id, List.of(
                 JournalLine.debit(fundsAccount, AccountType.LIABILITY, required, from),
                 JournalLine.credit(LedgerAccounts.PAYOUTS_IN_TRANSIT, AccountType.LIABILITY, gross, from),
                 JournalLine.credit(LedgerAccounts.FEE_INCOME, AccountType.INCOME, fee, from)

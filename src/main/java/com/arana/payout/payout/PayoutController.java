@@ -1,6 +1,8 @@
 package com.arana.payout.payout;
 
 import com.arana.payout.auth.BearerTokenFilter;
+import com.arana.payout.ledger.LedgerEntryView;
+import com.arana.payout.ledger.LedgerService;
 import com.arana.payout.payout.PayoutDtos.CreatePayoutRequest;
 import com.arana.payout.payout.PayoutDtos.PayoutResponse;
 import jakarta.servlet.http.HttpServletRequest;
@@ -15,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URI;
+import java.util.List;
 
 /**
  * The payout API. Everything here is behind the bearer-token filter (/v1/*).
@@ -27,9 +30,11 @@ import java.net.URI;
 public class PayoutController {
 
     private final PayoutService service;
+    private final LedgerService ledger;
 
-    public PayoutController(PayoutService service) {
+    public PayoutController(PayoutService service, LedgerService ledger) {
         this.service = service;
+        this.ledger = ledger;
     }
 
     @PostMapping
@@ -52,5 +57,19 @@ public class PayoutController {
     @GetMapping("/{id}")
     public PayoutResponse get(@PathVariable String id) {
         return PayoutResponse.from(service.get(id));
+    }
+
+    /**
+     * The double-entry journal lines behind this payout (commit + settlement).
+     * Scoped to the caller: another client's payout returns 404 (don't reveal it exists).
+     */
+    @GetMapping("/{id}/entries")
+    public List<LedgerEntryView> entries(@PathVariable String id, HttpServletRequest http) {
+        String clientId = (String) http.getAttribute(BearerTokenFilter.CLIENT_ID_ATTR);
+        Payout payout = service.get(id);                 // 404 if missing
+        if (!payout.clientId().equals(clientId)) {
+            throw new PayoutNotFoundException(id);        // hide other clients' payouts
+        }
+        return ledger.entriesForReference(id);
     }
 }

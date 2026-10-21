@@ -41,7 +41,7 @@ public class SettlementProcessor {
         String ccy = p.amount().currency();
         var gross = p.amount().value();
 
-        ledger.post("PAYOUT_SETTLE", List.of(
+        ledger.post("PAYOUT_SETTLE", payoutId, List.of(
                 JournalLine.debit(LedgerAccounts.PAYOUTS_IN_TRANSIT, AccountType.LIABILITY, gross, ccy),
                 JournalLine.credit(LedgerAccounts.BANK_CASH, AccountType.ASSET, gross, ccy)
         ));
