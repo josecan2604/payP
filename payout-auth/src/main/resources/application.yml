@@ -1,0 +1,21 @@
+server:
+  port: 9000
+
+spring:
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+
+auth:
+  issuer: payout-auth
+  token-ttl-seconds: 3600
+  clients:
+    demo-client:
+      secret: demo-secret
+      roles: [CLIENT]
+    admin-client:
+      secret: admin-secret
+      roles: [ADMIN, CLIENT]
+
+logging:
+  level:
+    com.arana.authserver: INFO
