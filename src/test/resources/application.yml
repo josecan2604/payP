@@ -1,0 +1,32 @@
+spring:
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+    default-property-inclusion: non_null
+  datasource:
+    url: jdbc:h2:mem:payp;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      # Tests build the schema from the entities (Flyway's Postgres DDL is exercised against real PG).
+      ddl-auto: create-drop
+    open-in-view: false
+  flyway:
+    enabled: false
+
+payout:
+  clients:
+    demo-client: demo-secret
+  token-ttl-seconds: 3600
+  webhook:
+    secret: whsec_test
+    callback-url: http://localhost:0/webhooks/payouts
+    tolerance-seconds: 300
+  # High delay so auto-settlement never fires mid-test; tests settle explicitly.
+  status-flip-delay-seconds: 3600
+  fx:
+    USD_PEN: 3.742
+    USD_USD: 1.0
+  seed-balance: 100000.00
+  seed-currency: USD

@@ -1,6 +1,7 @@
 package com.arana.payout.payout;
 
 import com.arana.payout.auth.AuthException;
+import com.arana.payout.ledger.InsufficientFundsException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -39,6 +40,13 @@ public class GlobalExceptionHandler {
     public ProblemDetail onBadRequest(RuntimeException ex) {
         ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
         pd.setTitle("Bad Request");
+        return pd;
+    }
+
+    @ExceptionHandler(InsufficientFundsException.class)
+    public ProblemDetail onInsufficientFunds(InsufficientFundsException ex) {
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage());
+        pd.setTitle("Insufficient Funds");
         return pd;
     }
 

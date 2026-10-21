@@ -14,8 +14,37 @@ No real money moves — the point is the mechanics.
 ## Stack
 - Java 21, Spring Boot 3.5 (web + validation; no Lombok)
 - **Postgres** via Spring Data JPA; schema owned by **Flyway** (`ddl-auto=validate`)
+- **Double-entry ledger** — every money movement is a balanced transaction (debits == credits)
 - HMAC-SHA256 webhook signatures
 - RFC 9457 `ProblemDetail` error responses
+
+## Double-entry ledger
+Money is never created or lost — it only moves between accounts, and **every transaction
+balances**. Chart of accounts:
+
+| Account | Type | Meaning |
+|---|---|---|
+| `BANK_CASH` | ASSET | real money we hold at our bank |
+| `CLIENT_FUNDS:<id>` | LIABILITY | a client's balance (what we owe them) |
+| `PAYOUTS_IN_TRANSIT` | LIABILITY | committed payouts not yet settled |
+| `FEE_INCOME` | INCOME | fees earned |
+
+The lifecycle posts three balanced transactions:
+
+```
+FUNDING (on boot, per client)         DEBIT  BANK_CASH            100000
+                                      CREDIT CLIENT_FUNDS:demo      100000
+
+PAYOUT_COMMIT (on create)             DEBIT  CLIENT_FUNDS:demo      1515.00   (gross + fee)
+                                      CREDIT PAYOUTS_IN_TRANSIT     1500.00   (gross)
+                                      CREDIT FEE_INCOME               15.00   (fee)
+
+PAYOUT_SETTLE (on completion)         DEBIT  PAYOUTS_IN_TRANSIT     1500.00
+                                      CREDIT BANK_CASH              1500.00
+```
+
+Check a client's balance any time: `GET /v1/balance`. A payout that exceeds it is rejected
+with `422` (`InsufficientFundsException`).
 
 ## Run
 ```bash
@@ -28,8 +57,9 @@ mvn spring-boot:run
 ```
 
 ### Schema (owned by Flyway — `src/main/resources/db/migration`)
-- `payout` — the ledger: one row per payout (amount, payout, fx_rate, fee, status, timestamps)
+- `payout` — one row per payout (amount, payout, fx_rate, fee, status, timestamps)
 - `idempotency_key` — maps an Idempotency-Key to the payout it created, so retries don't duplicate
+- `ledger_account` / `ledger_entry` — the double-entry ledger (append-only journal lines)
 
 ## Walk through the flow
 
